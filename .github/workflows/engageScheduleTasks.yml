@@ -27,14 +27,7 @@ jobs:
           echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
           echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
 
-name: Send Scheduled Email Campaigns
 
-on:
-  schedule:
-    - cron: '0 * * * *'    # every hour
-  workflow_dispatch:
-
-jobs:
   send_email_campaigns:
     name: Send Scheduled Emails
     runs-on: ubuntu-latest
