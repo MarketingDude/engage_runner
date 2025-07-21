@@ -1,7 +1,7 @@
 name: Engage Scheduled Tasks
 
 on:
-  # run every hour on the hour
+  # run every 5 minutes
   schedule:
   - cron: '*/5 * * * *'    # every 5 minutes
   # allow manual triggering
