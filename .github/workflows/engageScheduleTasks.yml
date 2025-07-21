@@ -27,26 +27,40 @@ jobs:
           echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
           echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
 
-  send-email-campaigns:
-    name: Send Email Campaigns
-    needs: validate-secrets
+name: Send Scheduled Email Campaigns
+
+on:
+  schedule:
+    - cron: '0 * * * *'    # every hour
+  workflow_dispatch:
+
+jobs:
+  send_email_campaigns:
+    name: Send Scheduled Emails
     runs-on: ubuntu-latest
+
     steps:
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ Missing CRON_SECRET"; exit 1
+          fi
       - name: Trigger sendEmailCampaign
         run: |
-          API_KEY="${{ needs.validate-secrets.outputs.api_key }}"
-          CRON_SECRET="${{ needs.validate-secrets.outputs.cron_secret }}"
           echo "▶ Calling sendEmailCampaign…"
           resp=$(curl -sS -w "HTTPSTATUS:%{http_code}" -X POST \
             "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaign" \
             -H "Content-Type: application/json" \
-            -H "api_key: $API_KEY" \
-            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
             -d '{}')
           body=${resp%HTTPSTATUS:*}
           code=${resp##*HTTPSTATUS:}
           echo "Status: $code"
-          echo "Body:   $body"
+          echo "Response: $body"
           if [[ $code -lt 200 || $code -ge 300 ]]; then
             echo "❌ sendEmailCampaign failed"; exit 1
           fi
