@@ -59,27 +59,29 @@ jobs:
           fi
           echo "✅ sendEmailCampaign succeeded"
 
-  publish-scheduled-posts:
+  publish_scheduled_posts:
     name: Publish Scheduled Posts
-    needs: validate-secrets
     runs-on: ubuntu-latest
     steps:
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ Missing CRON_SECRET" && exit 1
+          fi
+
       - name: Trigger publishScheduledPosts
         run: |
-          API_KEY="${{ needs.validate-secrets.outputs.api_key }}"
-          CRON_SECRET="${{ needs.validate-secrets.outputs.cron_secret }}"
-          echo "▶ Calling publishScheduledPosts…"
+          echo "▶ Publishing scheduled posts…"
           resp=$(curl -sS -w "HTTPSTATUS:%{http_code}" -X POST \
             "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts" \
             -H "Content-Type: application/json" \
-            -H "api_key: $API_KEY" \
-            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
             -d '{}')
           body=${resp%HTTPSTATUS:*}
           code=${resp##*HTTPSTATUS:}
           echo "Status: $code"
-          echo "Body:   $body"
+          echo "Response: $body"
           if [[ $code -lt 200 || $code -ge 300 ]]; then
-            echo "❌ publishScheduledPosts failed"; exit 1
+            echo "❌ publishScheduledPosts failed" && exit 1
           fi
           echo "✅ publishScheduledPosts succeeded"
