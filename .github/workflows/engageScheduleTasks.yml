@@ -3,7 +3,7 @@ name: Engage Scheduled Tasks
 on:
   # run every hour on the hour
   schedule:
-    - cron: '0 * * * *'
+  - cron: '*/5 * * * *'    # every 5 minutes
   # allow manual triggering
   workflow_dispatch:
 
