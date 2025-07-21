@@ -1,0 +1,78 @@
+name: Engage Scheduled Tasks
+
+on:
+  # run every hour on the hour
+  schedule:
+    - cron: '0 * * * *'
+  # allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  validate-secrets:
+    name: Validate Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      api_key: ${{ steps.check.outputs.api_key }}
+      cron_secret: ${{ steps.check.outputs.cron_secret }}
+    steps:
+      - id: check
+        run: |
+          # Ensure both secrets exist
+          if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ Missing CRON_SECRET"; exit 1
+          fi
+          echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
+          echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
+
+  send-email-campaigns:
+    name: Send Email Campaigns
+    needs: validate-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sendEmailCampaign
+        run: |
+          API_KEY="${{ needs.validate-secrets.outputs.api_key }}"
+          CRON_SECRET="${{ needs.validate-secrets.outputs.cron_secret }}"
+          echo "▶ Calling sendEmailCampaign…"
+          resp=$(curl -sS -w "HTTPSTATUS:%{http_code}" -X POST \
+            "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaign" \
+            -H "Content-Type: application/json" \
+            -H "api_key: $API_KEY" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d '{}')
+          body=${resp%HTTPSTATUS:*}
+          code=${resp##*HTTPSTATUS:}
+          echo "Status: $code"
+          echo "Body:   $body"
+          if [[ $code -lt 200 || $code -ge 300 ]]; then
+            echo "❌ sendEmailCampaign failed"; exit 1
+          fi
+          echo "✅ sendEmailCampaign succeeded"
+
+  publish-scheduled-posts:
+    name: Publish Scheduled Posts
+    needs: validate-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger publishScheduledPosts
+        run: |
+          API_KEY="${{ needs.validate-secrets.outputs.api_key }}"
+          CRON_SECRET="${{ needs.validate-secrets.outputs.cron_secret }}"
+          echo "▶ Calling publishScheduledPosts…"
+          resp=$(curl -sS -w "HTTPSTATUS:%{http_code}" -X POST \
+            "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts" \
+            -H "Content-Type: application/json" \
+            -H "api_key: $API_KEY" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d '{}')
+          body=${resp%HTTPSTATUS:*}
+          code=${resp##*HTTPSTATUS:}
+          echo "Status: $code"
+          echo "Body:   $body"
+          if [[ $code -lt 200 || $code -ge 300 ]]; then
+            echo "❌ publishScheduledPosts failed"; exit 1
+          fi
+          echo "✅ publishScheduledPosts succeeded"
