@@ -1,0 +1,43 @@
+# .github/workflows/send-email-campaign.yml
+name: Send Scheduled Email Campaigns
+
+on:
+  # Run at the top of every hour
+  schedule:
+    - cron: '0 * * * *'
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  send_email_campaigns:
+    name: Send Scheduled Emails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sendEmailCampaign
+        run: |
+          # Ensure we have the key
+          if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
+          fi
+
+          echo "▶ Calling sendEmailCampaign…"
+          # Fire the function and capture HTTP status
+          resp=$(curl -sS -w "HTTPSTATUS:%{http_code}" -X POST \
+            "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaign" \
+            -H "Content-Type: application/json" \
+            -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
+            -d '{}')
+
+          # Split body and status
+          body=${resp%HTTPSTATUS:*}
+          code=${resp##*HTTPSTATUS:}
+
+          echo "Status: $code"
+          echo "Response: $body"
+
+          # Fail on non-2xx
+          if [[ $code -lt 200 || $code -ge 300 ]]; then
+            echo "❌ sendEmailCampaign failed"; exit 1
+          fi
+
+          echo "✅ sendEmailCampaign succeeded"
