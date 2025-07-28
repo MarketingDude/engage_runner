@@ -14,16 +14,16 @@ jobs:
     outputs:
       api_key: ${{ steps.check.outputs.api_key }}
       cron_secret: ${{ steps.check.outputs.cron_secret }}
-  steps:
-     - id: check
-       run: |
+    steps:
+      - id: check
+        run: |
           # Ensure both secrets exist
           if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
             echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
           fi
-           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
             echo "❌ Missing CRON_SECRET"; exit 1
-            fi
+          fi
           echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
           echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
 
@@ -35,9 +35,9 @@ jobs:
     steps:
       - name: Validate secrets
         run: |
-         # if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
-         #   echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
-         # fi
+          #if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
+           # echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
+          #fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
             echo "❌ Missing CRON_SECRET"; exit 1
           fi
