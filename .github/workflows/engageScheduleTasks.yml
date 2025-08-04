@@ -2,12 +2,8 @@ name: Engage Scheduled Tasks
 
 on:
   schedule:
-    - cron: '*/5 * * * *'     # every 5 minutes
+    - cron: '*/5 * * * *'  # every 5 minutes
   workflow_dispatch:
-
-env:
-  BASE44_APP_ID: 684ae2bedb03f8ffb288ff36
-  BASE44_API_URL: https://app--engage-b288ff36.base44.app/api/apps/${{ env.BASE44_APP_ID }}
 
 jobs:
   trigger-tasks:
@@ -17,32 +13,34 @@ jobs:
     steps:
       - name: Validate required secrets
         run: |
+          if [ -z "${{ secrets.BASE44_APP_ID }}" ]; then
+            echo "❌ Missing BASE44_APP_ID" >&2; exit 1;
+          fi
           if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
-            echo "❌ Missing BASE44_SERVICE_ROLE_KEY" >&2
-            exit 1
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY" >&2; exit 1;
           fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "❌ Missing CRON_SECRET" >&2
-            exit 1
+            echo "❌ Missing CRON_SECRET" >&2; exit 1;
           fi
 
       - name: Call sendEmailCampaigns
         run: |
+          URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_APP_ID }}/functions/sendEmailCampaigns"
           for attempt in 1 2 3; do
             echo "▶ Attempt $attempt: sendEmailCampaigns"
-            http_code=$(curl -s -o /tmp/resp_send.txt -w "%{http_code}" \
-              -X POST "${{ env.BASE44_API_URL }}/functions/sendEmailCampaigns" \
+            status=$(curl -s -o /tmp/resp1.txt -w "%{http_code}" \
+              -X POST "$URL" \
               -H "Content-Type: application/json" \
               -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
-            echo "HTTP $http_code"
-            cat /tmp/resp_send.txt
-            if [[ "$http_code" == 2* ]]; then
+            echo "HTTP $status"
+            cat /tmp/resp1.txt
+            if [[ "$status" -ge 200 && "$status" -lt 300 ]]; then
               echo "✅ sendEmailCampaigns succeeded"
               break
             else
-              echo "❌ sendEmailCampaigns failed (status $http_code)"
+              echo "❌ sendEmailCampaigns failed, retrying…" 
               sleep $(( attempt * 2 ))
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -53,20 +51,21 @@ jobs:
 
       - name: Call publishScheduledPosts
         run: |
+          URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_APP_ID }}/functions/publishScheduledPosts"
           for attempt in 1 2 3; do
             echo "▶ Attempt $attempt: publishScheduledPosts"
-            http_code=$(curl -s -o /tmp/resp_post.txt -w "%{http_code}" \
-              -X POST "${{ env.BASE44_API_URL }}/functions/publishScheduledPosts" \
+            status=$(curl -s -o /tmp/resp2.txt -w "%{http_code}" \
+              -X POST "$URL" \
               -H "Content-Type: application/json" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
-            echo "HTTP $http_code"
-            cat /tmp/resp_post.txt
-            if [[ "$http_code" == 2* ]]; then
+            echo "HTTP $status"
+            cat /tmp/resp2.txt
+            if [[ "$status" -ge 200 && "$status" -lt 300 ]]; then
               echo "✅ publishScheduledPosts succeeded"
               break
             else
-              echo "❌ publishScheduledPosts failed (status $http_code)"
+              echo "❌ publishScheduledPosts failed, retrying…"
               sleep $(( attempt * 2 ))
             fi
             if [ "$attempt" -eq 3 ]; then
