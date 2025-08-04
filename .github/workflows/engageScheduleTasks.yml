@@ -2,89 +2,75 @@ name: Engage Scheduled Tasks
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # every 5 minutes
+    - cron: '*/5 * * * *'     # every 5 minutes
   workflow_dispatch:
 
+env:
+  BASE44_APP_ID: 684ae2bedb03f8ffb288ff36
+  BASE44_API_URL: https://app--engage-b288ff36.base44.app/api/apps/${{ env.BASE44_APP_ID }}
+
 jobs:
-  validate-secrets:
-    name: Validate Secrets
+  trigger-tasks:
+    name: Trigger Base44 Scheduled Tasks
     runs-on: ubuntu-latest
-    outputs:
-      api_key: ${{ steps.check.outputs.api_key }}
-      cron_secret: ${{ steps.check.outputs.cron_secret }}
+
     steps:
-      - id: check
+      - name: Validate required secrets
         run: |
           if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
-            echo "❌ Missing BASE44_SERVICE_ROLE_KEY"; exit 1
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY" >&2
+            exit 1
           fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "❌ Missing CRON_SECRET"; exit 1
+            echo "❌ Missing CRON_SECRET" >&2
+            exit 1
           fi
-          echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
-          echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
 
-  send_email_campaigns:
-    name: Send Scheduled Emails
-    runs-on: ubuntu-latest
-    needs: validate-secrets
-    steps:
-      - name: Trigger sendEmailCampaign
+      - name: Call sendEmailCampaigns
         run: |
-          echo "▶ Calling sendEmailCampaign…"
-          n=0
-          until [ $n -ge 3 ]; do
-            resp=$(curl -sS -D headers.txt -w "\nHTTPSTATUS:%{http_code}" -X POST \
-              "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaigns" \
+          for attempt in 1 2 3; do
+            echo "▶ Attempt $attempt: sendEmailCampaigns"
+            http_code=$(curl -s -o /tmp/resp_send.txt -w "%{http_code}" \
+              -X POST "${{ env.BASE44_API_URL }}/functions/sendEmailCampaigns" \
               -H "Content-Type: application/json" \
               -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
-            body=${resp%HTTPSTATUS:*}
-            code=${resp##*HTTPSTATUS:}
-            echo "Status: $code"
-            echo "Headers:" && cat headers.txt
-            echo "Response: $body"
-            if [[ $code -ge 200 && $code -lt 300 ]]; then
-              echo "✅ sendEmailCampaign succeeded"
+            echo "HTTP $http_code"
+            cat /tmp/resp_send.txt
+            if [[ "$http_code" == 2* ]]; then
+              echo "✅ sendEmailCampaigns succeeded"
               break
+            else
+              echo "❌ sendEmailCampaigns failed (status $http_code)"
+              sleep $(( attempt * 2 ))
             fi
-            echo "❌ sendEmailCampaign failed (attempt $((n+1)))"
-            n=$((n+1))
-            sleep 2
+            if [ "$attempt" -eq 3 ]; then
+              echo "🚨 sendEmailCampaigns failed after 3 attempts" >&2
+              exit 1
+            fi
           done
-          if [[ $code -lt 200 || $code -ge 300 ]]; then
-            exit 1
-          fi
 
-  publish_scheduled_posts:
-    name: Publish Scheduled Posts
-    runs-on: ubuntu-latest
-    needs: validate-secrets
-    steps:
-      - name: Trigger publishScheduledPosts
+      - name: Call publishScheduledPosts
         run: |
-          echo "▶ Publishing scheduled posts…"
-          n=0
-          until [ $n -ge 3 ]; do
-            resp=$(curl -sS -D headers.txt -w "\nHTTPSTATUS:%{http_code}" -X POST \
-              "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts" \
+          for attempt in 1 2 3; do
+            echo "▶ Attempt $attempt: publishScheduledPosts"
+            http_code=$(curl -s -o /tmp/resp_post.txt -w "%{http_code}" \
+              -X POST "${{ env.BASE44_API_URL }}/functions/publishScheduledPosts" \
               -H "Content-Type: application/json" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
-            body=${resp%HTTPSTATUS:*}
-            code=${resp##*HTTPSTATUS:}
-            echo "Status: $code"
-            echo "Headers:" && cat headers.txt
-            echo "Response: $body"
-            if [[ $code -ge 200 && $code -lt 300 ]]; then
+            echo "HTTP $http_code"
+            cat /tmp/resp_post.txt
+            if [[ "$http_code" == 2* ]]; then
               echo "✅ publishScheduledPosts succeeded"
               break
+            else
+              echo "❌ publishScheduledPosts failed (status $http_code)"
+              sleep $(( attempt * 2 ))
             fi
-            echo "❌ publishScheduledPosts failed (attempt $((n+1)))"
-            n=$((n+1))
-            sleep 2
+            if [ "$attempt" -eq 3 ]; then
+              echo "🚨 publishScheduledPosts failed after 3 attempts" >&2
+              exit 1
+            fi
           done
-          if [[ $code -lt 200 || $code -ge 300 ]]; then
-            exit 1
-          fi
