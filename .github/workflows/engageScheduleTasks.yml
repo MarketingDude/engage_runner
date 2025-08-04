@@ -35,7 +35,7 @@ jobs:
           n=0
           until [ $n -ge 3 ]; do
             resp=$(curl -sS -D headers.txt -w "\nHTTPSTATUS:%{http_code}" -X POST \
-              "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaigns" \
+              "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/emailCampaignProcessor" \
               -H "Content-Type: application/json" \
               -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
