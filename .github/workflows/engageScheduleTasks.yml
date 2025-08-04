@@ -6,24 +6,30 @@ on:
   workflow_dispatch:
 
 jobs:
-  trigger-tasks:
-    name: Trigger Base44 Scheduled Tasks
+  validate-secrets:
+    name: Validate Secrets
     runs-on: ubuntu-latest
-
+    outputs:
+      api_key: ${{ steps.check.outputs.api_key }}
+      cron_secret: ${{ steps.check.outputs.cron_secret }}
     steps:
-      - name: Validate required secrets
+      - id: check
         run: |
-          if [ -z "${{ secrets.BASE44_APP_ID }}" ]; then
-            echo "❌ Missing BASE44_APP_ID" >&2; exit 1;
-          fi
           if [ -z "${{ secrets.BASE44_SERVICE_ROLE_KEY }}" ]; then
-            echo "❌ Missing BASE44_SERVICE_ROLE_KEY" >&2; exit 1;
+            echo "❌ Missing BASE44_SERVICE_ROLE_KEY" >&2; exit 1
           fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "❌ Missing CRON_SECRET" >&2; exit 1;
+            echo "❌ Missing CRON_SECRET" >&2; exit 1
           fi
+          echo "::set-output name=api_key::${{ secrets.BASE44_SERVICE_ROLE_KEY }}"
+          echo "::set-output name=cron_secret::${{ secrets.CRON_SECRET }}"
 
-      - name: Call sendEmailCampaigns
+  send_email_campaigns:
+    name: Send Scheduled Emails
+    runs-on: ubuntu-latest
+    needs: validate-secrets
+    steps:
+      - name: Trigger sendEmailCampaigns
         run: |
           URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_APP_ID }}/functions/sendEmailCampaigns"
           for attempt in 1 2 3; do
@@ -31,8 +37,8 @@ jobs:
             status=$(curl -s -o /tmp/resp1.txt -w "%{http_code}" \
               -X POST "$URL" \
               -H "Content-Type: application/json" \
-              -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
-              -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+              -H "api_key: ${{ needs.validate-secrets.outputs.api_key }}" \
+              -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
               -d '{}')
             echo "HTTP $status"
             cat /tmp/resp1.txt
@@ -49,7 +55,12 @@ jobs:
             fi
           done
 
-      - name: Call publishScheduledPosts
+  publish_scheduled_posts:
+    name: Publish Scheduled Posts
+    runs-on: ubuntu-latest
+    needs: validate-secrets
+    steps:
+      - name: Trigger publishScheduledPosts
         run: |
           URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_APP_ID }}/functions/publishScheduledPosts"
           for attempt in 1 2 3; do
@@ -57,7 +68,7 @@ jobs:
             status=$(curl -s -o /tmp/resp2.txt -w "%{http_code}" \
               -X POST "$URL" \
               -H "Content-Type: application/json" \
-              -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+              -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
               -d '{}')
             echo "HTTP $status"
             cat /tmp/resp2.txt
