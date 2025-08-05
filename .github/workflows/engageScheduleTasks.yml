@@ -37,7 +37,7 @@ jobs:
             status=$(curl -s -o /tmp/resp1.txt -w "%{http_code}" \
               -X POST "$URL" \
               -H "Content-Type: application/json" \
-              -H "api_key: ${{ needs.validate-secrets.outputs.api_key }}" \
+              -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
               -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
               -d '{}')
             echo "HTTP $status"
@@ -70,17 +70,22 @@ jobs:
               -H "Content-Type: application/json" \
               -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
               -d '{}')
-            echo "HTTP $status"
-            cat /tmp/resp2.txt
-            if [[ "$status" -ge 200 && "$status" -lt 300 ]]; then
+            body=${resp%HTTPSTATUS:*}
+            code=${resp##*HTTPSTATUS:}
+            echo "Status: $code"
+            echo "Headers:" && cat headers.txt
+            echo "Response: $body"
+            if [[ $code -ge 200 && $code -lt 300 ]]; then
               echo "✅ publishScheduledPosts succeeded"
               break
-            else
-              echo "❌ publishScheduledPosts failed, retrying…"
-              sleep $(( attempt * 2 ))
             fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "🚨 publishScheduledPosts failed after 3 attempts" >&2
+            echo "❌ publishScheduledPosts failed (attempt $((n+1)))"
+            n=$((n+1))
+            sleep 2
+          done
+          if [[ $code -lt 200 || $code -ge 300 ]]; then
+            exit 1
+          fi "🚨 publishScheduledPosts failed after 3 attempts" >&2
               exit 1
             fi
           done
