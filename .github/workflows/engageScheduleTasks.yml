@@ -38,7 +38,7 @@ jobs:
               -X POST "$URL" \
               -H "Content-Type: application/json" \
               -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
-              -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
+              -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
             echo "HTTP $status"
             cat /tmp/resp1.txt
@@ -68,7 +68,7 @@ jobs:
             status=$(curl -s -o /tmp/resp2.txt -w "%{http_code}" \
               -X POST "$URL" \
               -H "Content-Type: application/json" \
-              -H "X-Cron-Secret: ${{ needs.validate-secrets.outputs.cron_secret }}" \
+              -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
             body=${resp%HTTPSTATUS:*}
             code=${resp##*HTTPSTATUS:}
