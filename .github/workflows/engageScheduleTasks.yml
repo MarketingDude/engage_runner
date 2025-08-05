@@ -62,11 +62,11 @@ jobs:
     steps:
       - name: Trigger publishScheduledPosts
         run: |
-          URL="https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts"
-          for attempt in 1 2 3; do
-            echo "▶ Attempt $attempt: publishScheduledPosts"
-            status=$(curl -s -o /tmp/resp2.txt -w "%{http_code}" \
-              -X POST "$URL" \
+          echo "▶ Publishing scheduled posts…"
+          n=0
+          until [ $n -ge 3 ]; do
+            resp=$(curl -sS -D headers.txt -w "\nHTTPSTATUS:%{http_code}" -X POST \
+              "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts" \
               -H "Content-Type: application/json" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
               -d '{}')
@@ -85,7 +85,4 @@ jobs:
           done
           if [[ $code -lt 200 || $code -ge 300 ]]; then
             exit 1
-          fi "🚨 publishScheduledPosts failed after 3 attempts" >&2
-              exit 1
-            fi
-          done
+          fi
