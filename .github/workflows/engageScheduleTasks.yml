@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Trigger sendEmailCampaigns
         run: |
-          URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_SERVICE_ROLE_KEY }}/functions/sendEmailCampaigns"
+          URL="https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/sendEmailCampaigns"
           for attempt in 1 2 3; do
             echo "▶ Attempt $attempt: sendEmailCampaigns"
             status=$(curl -s -o /tmp/resp1.txt -w "%{http_code}" \
@@ -62,7 +62,7 @@ jobs:
     steps:
       - name: Trigger publishScheduledPosts
         run: |
-          URL="https://app--engage-b288ff36.base44.app/api/apps/${{ secrets.BASE44_SERVICE_ROLE_KEY }}/functions/publishScheduledPosts"
+          URL="https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts"
           for attempt in 1 2 3; do
             echo "▶ Attempt $attempt: publishScheduledPosts"
             status=$(curl -s -o /tmp/resp2.txt -w "%{http_code}" \
