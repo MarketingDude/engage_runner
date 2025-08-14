@@ -39,7 +39,7 @@ jobs:
               -H "Content-Type: application/json" \
               -H "api_key: ${{ secrets.BASE44_SERVICE_ROLE_KEY }}" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-              -d '{}')
+              -d '{"dryRun": false}')
             echo "HTTP $status"
             cat /tmp/resp1.txt
             if [[ "$status" -ge 200 && "$status" -lt 300 ]]; then
@@ -69,7 +69,7 @@ jobs:
               "https://app--engage-b288ff36.base44.app/api/apps/684ae2bedb03f8ffb288ff36/functions/publishScheduledPosts" \
               -H "Content-Type: application/json" \
               -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-              -d '{}')
+              -d '{"dryRun": false}')
             body=${resp%HTTPSTATUS:*}
             code=${resp##*HTTPSTATUS:}
             echo "Status: $code"
